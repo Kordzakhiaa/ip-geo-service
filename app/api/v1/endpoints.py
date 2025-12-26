@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Request, status
+import logging
+
+from fastapi import APIRouter, Request, status, HTTPException
+from httpx import RequestError, TimeoutException
 
 from app.api.v1.models import GeoResponse, ErrorResponse
 from app.services.ip_geolocation import get_geo_for_ip
 from app.utils.validators import validate_ipv4
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health", status_code=status.HTTP_200_OK)
@@ -17,13 +22,30 @@ def health():
     response_model=GeoResponse,
     responses={status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse}},
 )
-def geo_by_ip(ip: str):
+async def geo_by_ip(ip: str):
     if not validate_ipv4(ip):
-        return ErrorResponse(error="Invalid IP address")
-    return get_geo_for_ip(ip)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid IP address"
+        )
+    try:
+        return await get_geo_for_ip(ip)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except (RequestError, TimeoutException) as e:
+        logger.exception(f"HTTP request failed for IP {ip}, error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to fetch data from geolocation service",
+        )
+    except Exception as e:
+        logger.exception(f"Unexpected error for IP {ip}, error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
 
 
 @router.get("/geo", response_model=GeoResponse)
-def geo_for_client(request: Request):
+async def geo_for_client(request: Request):
     client_ip = request.client.host
-    return get_geo_for_ip(client_ip)
+    return await get_geo_for_ip(client_ip)
