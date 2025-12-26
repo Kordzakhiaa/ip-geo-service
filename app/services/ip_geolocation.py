@@ -12,6 +12,18 @@ IP_SETTINGS = IPSettings()
 
 
 async def get_geo_for_ip(ip: str) -> GeoResponse:
+    """
+    Fetch geolocation information from external provider for a given IP.
+
+    Args:
+        ip (str): IPv4 address to lookup.
+
+    Returns:
+        GeoResponse: Geolocation information.
+
+    Raises:
+        HTTPException: 404 if provider cannot find IP, 502 for network issues.
+    """
     async with httpx.AsyncClient(timeout=IP_SETTINGS.IP_API_TIMEOUT) as client:
         try:
             resp = await client.get(IP_SETTINGS.IP_API_URL.format(ip=ip))
@@ -25,7 +37,8 @@ async def get_geo_for_ip(ip: str) -> GeoResponse:
 
     if data.get("status") != "success":
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="IP information not found"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"IP information not found, message: {data.get('message')}",
         )
 
     return GeoResponse(
