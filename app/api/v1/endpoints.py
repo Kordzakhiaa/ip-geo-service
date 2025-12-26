@@ -27,21 +27,14 @@ async def geo_by_ip(ip: str):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid IP address"
         )
+
     try:
         return await get_geo_for_ip(ip)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except (RequestError, TimeoutException) as e:
         logger.exception(f"HTTP request failed for IP {ip}, error: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to fetch data from geolocation service",
-        )
-    except Exception as e:
-        logger.exception(f"Unexpected error for IP {ip}, error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
         )
 
 

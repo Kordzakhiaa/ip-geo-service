@@ -19,7 +19,8 @@ async def get_geo_for_ip(ip: str) -> GeoResponse:
         except httpx.RequestError as e:
             logger.error(f"HTTP request failed for IP {ip}: {e}")
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY, detail="IP API request failed"
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to fetch data from geolocation service",
             )
 
     if data.get("status") != "success":
